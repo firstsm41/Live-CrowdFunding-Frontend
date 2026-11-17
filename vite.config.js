@@ -1,34 +1,33 @@
-// vite.config.js
-
-import { fileURLToPath, URL } from 'node:url' 
+import { fileURLToPath, URL } from 'node:url'
+import { existsSync, readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import fs from 'fs'
-import path from 'path'
 
-export default defineConfig({
-  plugins: [
-    vue(),
-  ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
-  },
-  server: {  // 여기에 server 설정 추가
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      }
+export default defineConfig(({ command }) => {
+  const keyPath = fileURLToPath(new URL('./key.pem', import.meta.url))
+  const certPath = fileURLToPath(new URL('./cert.pem', import.meta.url))
+  const useHttps = command === 'serve' && existsSync(keyPath) && existsSync(certPath)
+
+  return {
+    plugins: [vue()],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
     },
-    https: {
-      key: fs.readFileSync(path.resolve(__dirname, 'key.pem')),
-      cert: fs.readFileSync(path.resolve(__dirname, 'cert.pem')),
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+        },
+      },
+      https: useHttps ? {
+        key: readFileSync(keyPath),
+        cert: readFileSync(certPath),
+      } : undefined,
+      host: '127.0.0.1',
+      port: 5173,
     },
-    host: "127.0.0.1",
-    port: 5173, // 원하는 포트 설정
-    // open: true, // 서버가 실행되면 자동으로 브라우저 열기
   }
 })
-
